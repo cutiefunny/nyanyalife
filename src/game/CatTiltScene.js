@@ -56,16 +56,18 @@ export default class CatTiltScene extends Phaser.Scene {
         const ground = this.add.rectangle(width / 2, groundY, width, 80, 0x334155);
         this.physics.add.existing(ground, true);
 
-        // 랜덤 발판 생성 (바닥부터 꼭대기까지 점프로 도달 가능한 간격)
+        // 랜덤 발판 생성 (1회 점프 최대 높이 ~169px 내에서 다양한 높이 간격으로 배치)
         const platforms = this.physics.add.staticGroup();
-        let currentY = groundY - 125;
+        const minStepY = 60;
+        const maxStepY = 148;
+        let currentY = groundY - Phaser.Math.Between(85, 130);
         let prevX = width / 2;
         let prevWasNarrow = true; // 첫 발판은 일반 발판으로 시작
         let narrowCount = 0;
         const maxNarrowPlatforms = 2;
         const goalY = 160;
 
-        while (currentY > goalY + 115) {
+        while (currentY > goalY + maxStepY) {
             const isNarrow =
                 narrowCount < maxNarrowPlatforms &&
                 !prevWasNarrow &&
@@ -76,14 +78,7 @@ export default class CatTiltScene extends Phaser.Scene {
             const minX = platWidth / 2 + 24;
             const maxX = width - platWidth / 2 - 24;
 
-            // 이전 발판에서 점프로 도달 가능한 수평 거리 내에서 랜덤 배치
-            const offset = Phaser.Math.Between(110, 260) * (Math.random() < 0.5 ? -1 : 1);
-            let nextX = Phaser.Math.Clamp(prevX + offset, minX, maxX);
-            if (Math.abs(nextX - prevX) < 80) {
-                nextX = Phaser.Math.Clamp(prevX - offset, minX, maxX);
-            }
-
-            const plat = this.add.rectangle(nextX, currentY, platWidth, 13, 0x64748b);
+            const plat = this.add.rectangle(prevX, currentY, platWidth, 13, 0x64748b);
             plat.setStrokeStyle(2, 0x94a3b8);
             this.physics.add.existing(plat, true);
             // 아래에서 위로 통과 가능한 원웨이(One-way) 발판
@@ -95,9 +90,19 @@ export default class CatTiltScene extends Phaser.Scene {
             if (isNarrow) {
                 narrowCount += 1;
             }
-            prevX = nextX;
             prevWasNarrow = isNarrow;
-            currentY -= Phaser.Math.Between(95, 125);
+
+            // 다음 발판의 수직 간격을 다양하게(60~148px) 결정하고, 높을수록 수평 거리를 보정
+            const nextStepY = Phaser.Math.Between(minStepY, maxStepY);
+            const maxOffsetX = nextStepY > 125 ? 200 : 260;
+            const offset = Phaser.Math.Between(100, maxOffsetX) * (Math.random() < 0.5 ? -1 : 1);
+            let nextX = Phaser.Math.Clamp(prevX + offset, minX, maxX);
+            if (Math.abs(nextX - prevX) < 80) {
+                nextX = Phaser.Math.Clamp(prevX - offset, minX, maxX);
+            }
+
+            prevX = nextX;
+            currentY -= nextStepY;
         }
 
         // 꼭대기 목표 발판 생성
